@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../services/nvr_status.dart';
 import '../../services/onvif_service.dart';
 import '../devices/device.dart';
 import '../devices/device_repository.dart';
@@ -105,33 +106,57 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       ),
       body: !loaded
           ? const Center(child: CircularProgressIndicator())
-          : ListView(
-              padding: const EdgeInsets.all(16),
-              children: [
-                _info('This phone', _phoneIp),
-                const Divider(height: 32),
-                if (devices.isEmpty)
-                  _emptyState(context)
-                else
-                  for (final d in devices)
-                    ListTile(
-                      leading: _busyId == d.id
-                          ? const SizedBox(
-                              width: 24,
-                              height: 24,
-                              child:
-                                  CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Icon(Icons.dvr),
-                      title: Text(d.name),
-                      subtitle: Text(d.host),
-                      enabled: _busyId == null,
-                      onTap: () => _startLive(d),
-                    ),
-              ],
+          : RefreshIndicator(
+              onRefresh: () async => ref.invalidate(nvrStatusProvider),
+              child: ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.all(16),
+                children: [
+                  _info('This phone', _phoneIp),
+                  const Divider(height: 32),
+                  if (devices.isEmpty)
+                    _emptyState(context)
+                  else
+                    for (final d in devices)
+                      ListTile(
+                        leading: _busyId == d.id
+                            ? const SizedBox(
+                                width: 24,
+                                height: 24,
+                                child:
+                                    CircularProgressIndicator(strokeWidth: 2),
+                              )
+                            : const Icon(Icons.dvr),
+                        title: Text(d.name),
+                        subtitle: Text(d.host),
+                        trailing: ref.watch(nvrStatusProvider(d.id)).when(
+                              loading: () => _badge(Colors.grey, 'Checking…'),
+                              error: (_, _) => _badge(Colors.red, 'Offline'),
+                              data: (online) => online
+                                  ? _badge(Colors.green, 'Online')
+                                  : _badge(Colors.red, 'Offline'),
+                            ),
+                        enabled: _busyId == null,
+                        onTap: () => _startLive(d),
+                      ),
+                ],
+              ),
             ),
     );
   }
+
+  Widget _badge(Color color, String text) => Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 8,
+            height: 8,
+            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+          ),
+          const SizedBox(width: 6),
+          Text(text, style: TextStyle(color: color, fontSize: 12)),
+        ],
+      );
 
   Widget _emptyState(BuildContext context) => Column(
         children: [

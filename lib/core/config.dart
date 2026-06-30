@@ -15,4 +15,8 @@ class AppConfig {
 
   static const Duration discoveryTimeout = Duration(seconds: 4);
   static const Duration connectTimeout = Duration(seconds: 8);
+
+  /// Short TCP-reachability timeout for the home-list online/offline dots —
+  /// must resolve fast so the list isn't blocked. Tune per LAN.
+  static const Duration statusTimeout = Duration(seconds: 3);
 }
