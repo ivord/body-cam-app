@@ -57,7 +57,7 @@ class DevicesNotifier extends Notifier<List<Device>> {
 
   Future<void> _load() async {
     state = await _repo.load();
-    ref.read(devicesLoadedProvider.notifier).state = true;
+    ref.read(devicesLoadedProvider.notifier).markLoaded();
   }
 
   Future<void> upsert(Device d) async {
@@ -81,4 +81,12 @@ final devicesProvider =
 
 /// Flips to true once the initial secure-storage read resolves, so the UI
 /// can tell "no devices saved" apart from "still loading".
-final devicesLoadedProvider = StateProvider<bool>((_) => false);
+class DevicesLoaded extends Notifier<bool> {
+  @override
+  bool build() => false;
+
+  void markLoaded() => state = true;
+}
+
+final devicesLoadedProvider =
+    NotifierProvider<DevicesLoaded, bool>(DevicesLoaded.new);
