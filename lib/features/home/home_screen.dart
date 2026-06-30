@@ -9,7 +9,8 @@ import '../devices/device_repository.dart';
 import '../live/live_screen.dart';
 import '../settings/nvr_settings_screen.dart';
 
-/// Home: pick a stored NVR and start live. NVR config lives in NVR Settings.
+/// Home: list stored NVRs, tap one to start live. NVR config lives in NVR
+/// Settings.
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
@@ -18,16 +19,13 @@ class HomeScreen extends ConsumerStatefulWidget {
 }
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
-  String? _selectedId;
-  bool _revealPass = false;
-  bool _busy = false;
+  String? _busyId;
   String _phoneIp = '…';
 
   @override
   void initState() {
     super.initState();
     _loadPhoneIp();
-    _restoreSelection();
   }
 
   Future<void> _loadPhoneIp() async {
@@ -43,21 +41,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     }
   }
 
-  Future<void> _restoreSelection() async {
-    final last = await ref.read(deviceRepoProvider).loadLastViewed();
-    if (last != null && mounted) setState(() => _selectedId = last.deviceId);
-  }
-
-  Device? _selected(List<Device> devices) {
-    if (devices.isEmpty) return null;
-    return devices.firstWhere(
-      (d) => d.id == _selectedId,
-      orElse: () => devices.first,
-    );
-  }
-
   Future<void> _startLive(Device device) async {
-    setState(() => _busy = true);
+    setState(() => _busyId = device.id);
     var channels = device.channels;
     try {
       final resolved =
@@ -92,7 +77,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         : (channels.isNotEmpty ? channels.first.channel : 1);
 
     if (!mounted) return;
-    setState(() => _busy = false);
+    setState(() => _busyId = null);
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => LiveScreen(deviceId: device.id, channel: channel),
@@ -103,7 +88,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final devices = ref.watch(devicesProvider);
-    final selected = _selected(devices);
+    final loaded = ref.watch(devicesLoadedProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -118,53 +103,33 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           ),
         ],
       ),
-      body: AbsorbPointer(
-        absorbing: _busy,
-        child: ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            _info('This phone', _phoneIp),
-            const Divider(height: 32),
-            if (devices.isEmpty)
-              _emptyState(context)
-            else ...[
-              DropdownButtonFormField<String>(
-                initialValue: selected?.id,
-                decoration: const InputDecoration(
-                  labelText: 'NVR',
-                  border: OutlineInputBorder(),
-                ),
-                items: [
+      body: !loaded
+          ? const Center(child: CircularProgressIndicator())
+          : ListView(
+              padding: const EdgeInsets.all(16),
+              children: [
+                _info('This phone', _phoneIp),
+                const Divider(height: 32),
+                if (devices.isEmpty)
+                  _emptyState(context)
+                else
                   for (final d in devices)
-                    DropdownMenuItem(value: d.id, child: Text(d.name)),
-                ],
-                onChanged: (v) => setState(() => _selectedId = v),
-              ),
-              const SizedBox(height: 16),
-              if (selected != null) ...[
-                _info('Host / IP', selected.host),
-                _info('Username', selected.user),
-                _passwordRow(selected.pass),
-                const SizedBox(height: 24),
-                FilledButton.icon(
-                  onPressed: _busy ? null : () => _startLive(selected),
-                  icon: _busy
-                      ? const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.play_arrow),
-                  label: const Text('Start live'),
-                  style: FilledButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                  ),
-                ),
+                    ListTile(
+                      leading: _busyId == d.id
+                          ? const SizedBox(
+                              width: 24,
+                              height: 24,
+                              child:
+                                  CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.dvr),
+                      title: Text(d.name),
+                      subtitle: Text(d.host),
+                      enabled: _busyId == null,
+                      onTap: () => _startLive(d),
+                    ),
               ],
-            ],
-          ],
-        ),
-      ),
+            ),
     );
   }
 
@@ -189,25 +154,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             SizedBox(width: 96, child: Text('$label :')),
             Expanded(
               child: Text(value, style: const TextStyle(fontWeight: FontWeight.w600)),
-            ),
-          ],
-        ),
-      );
-
-  Widget _passwordRow(String pass) => Padding(
-        padding: const EdgeInsets.symmetric(vertical: 4),
-        child: Row(
-          children: [
-            const SizedBox(width: 96, child: Text('Password :')),
-            Expanded(
-              child: Text(
-                _revealPass ? pass : '•' * (pass.isEmpty ? 0 : 8),
-                style: const TextStyle(fontWeight: FontWeight.w600),
-              ),
-            ),
-            IconButton(
-              icon: Icon(_revealPass ? Icons.visibility_off : Icons.visibility),
-              onPressed: () => setState(() => _revealPass = !_revealPass),
             ),
           ],
         ),

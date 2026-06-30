@@ -111,9 +111,29 @@ ios/Runner/Backchannel.swift             iOS talk (stub — see Status)
 ## Run
 
 ```bash
-flutter pub get
-flutter run            # Android/iOS device on the same LAN as the NVR
+flutter pub get        # fetch dependencies (first time)
 ```
+
+Both platforms must be on the **same LAN as the NVR**.
+
+### Android
+
+```bash
+flutter devices                 # list connected targets
+flutter run -d android          # USB debugging on; debug build
+flutter build apk               # release APK → build/app/outputs/flutter-apk/
+```
+
+### iOS
+
+```bash
+cd ios && pod install && cd ..  # media_kit uses CocoaPods, not SPM
+open ios/Runner.xcworkspace     # once: select a Signing Team
+flutter run -d ios              # real device — needed for ONVIF + mic
+```
+
+iOS ONVIF discovery needs Apple's **Multicast Networking entitlement**; the
+manual-IP add (Scan not required) works without it.
 
 **First run**: Home → **⚙ NVR Settings** → **Add NVR** → fill host/creds (**Scan**
 autofills the IP) → Save. Back on Home, pick the NVR from the dropdown → **Start
