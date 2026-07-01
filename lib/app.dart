@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'core/theme.dart';
 import 'features/home/home_screen.dart';
 
 class NvrApp extends StatelessWidget {
@@ -8,14 +9,8 @@ class NvrApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'NVR Viewer',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: Colors.blueGrey,
-          brightness: Brightness.dark,
-        ),
-        useMaterial3: true,
-      ),
+      title: 'LGS Body Camera',
+      theme: buildAppTheme(),
       home: const HomeScreen(),
       debugShowCheckedModeBanner: false,
     );
